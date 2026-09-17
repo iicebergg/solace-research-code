@@ -43,6 +43,7 @@ from sklearn.cluster import KMeans
 from sklearn.manifold import TSNE
 from sklearn.metrics import silhouette_score
 from sklearn.feature_extraction.text import TfidfVectorizer
+from nltk.stem import SnowballStemmer
 
 # ----------------------------------------------------------------------------
 # Config
@@ -214,12 +215,24 @@ def cluster_keywords(df: pd.DataFrame, k: int, top_n: int = 12) -> pd.DataFrame:
     )
     tfidf = vec.fit_transform(docs)
     terms = np.array(vec.get_feature_names_out())
+    stemmer = SnowballStemmer("english")
+    stems = np.array([stemmer.stem(t) for t in terms])
 
     rows = []
     for i, c in enumerate(ids):
         row = tfidf[i].toarray().ravel()
-        top_idx = row.argsort()[::-1][:top_n]
-        kw = ", ".join(terms[j] for j in top_idx if row[j] > 0)
+        ranked = row.argsort()[::-1]
+
+        kw_terms, seen_stems = [], set()
+        for j in ranked:
+            if row[j] <= 0 or len(kw_terms) >= top_n:
+                break
+            stem = stems[j]
+            if stem in seen_stems:
+                continue  # a higher-scoring variant (e.g. plural/tense) already kept
+            seen_stems.add(stem)
+            kw_terms.append(terms[j])
+        kw = ", ".join(kw_terms)
         rows.append(
             {
                 "cluster": c,

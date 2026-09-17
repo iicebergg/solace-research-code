@@ -8,3 +8,4 @@ The following dependencies were added using the ```uv add``` command:
 * torch
 * sentence-transformers
 * ruptures
+* nltk
